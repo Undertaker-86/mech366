@@ -114,27 +114,34 @@ ylabel('Load velocity (m/s)');
 title('Simulation of load velocity');
 saveas(gcf,'robot_sim.png', "png")
 
+mass_index = 19;
 % Calculate final value and tolerance
-v1_end = v1{6}(end);
+v1_end = v1{mass_index}(end);
 tolerance = 0.01 * abs(v1_end);
 
+% Moving average
+n = 1000; %n represent how many rows in the final result
+v1_averaged = reshape(v1{mass_index}(1:10000), n, []);
+v1_averaged = abs(v1_averaged - v1_end);
+v1_averaged = mean(v1_averaged, 2);
 % Find the settling time index
-t_settle_index = find(abs(v1{6} - v1_end) <= tolerance, 1, 'first');
+t_settle_index = find(v1_averaged <= tolerance, 1, 'first');
 
 % Plot the original data
 figure;
-plot(t{6}, v1{6});
+plot(t{mass_index}, v1{mass_index});
 xlabel('Time (s)');
-ylabel('Load velocity (m/s)');
+ylabel('Robot velocity (m/s)');
 title('Robot velocity settling time');
 hold on;
 
 % Find the time at which settling occurs
-t_settle = t{6}(t_settle_index);
+t_settle_index = round(10000/n*(1/2+t_settle_index));
+t_settle = t{mass_index}(t_settle_index);
 
 % Zoom in plot
 zoom_window = 300;
-zoom_indices = max(t_settle_index - zoom_window, 1) : min(t_settle_index + zoom_window, length(t{6}));
+zoom_indices = max(t_settle_index - zoom_window, 1) : min(t_settle_index + zoom_window, length(t{mass_index}));
 
 yline(v1_end, '--r', '1% Tolerance');
 xline(t_settle, '--k', 'Settling Time');
@@ -142,12 +149,12 @@ xline(t_settle, '--k', 'Settling Time');
 inset_pos = [0.55 0.55 0.3 0.3]; 
 inset_axes = axes('Position', inset_pos);
 
-plot(inset_axes, t{6}(zoom_indices), v1{6}(zoom_indices));
+plot(inset_axes, t{mass_index}(zoom_indices), v1{mass_index}(zoom_indices));
 xlabel(inset_axes, 'Time (s)');
 ylabel(inset_axes, 'Load velocity (m/s)');
 title(inset_axes, 'Zoomed View');
-xlim(inset_axes, [t{6}(zoom_indices(1)), t{6}(zoom_indices(end))]);
-ylim(inset_axes, [2.2, 2.5]);
+xlim(inset_axes, [t{mass_index}(zoom_indices(1)), t{mass_index}(zoom_indices(end))]);
+% ylim(inset_axes, [2.2, 2.5]);
 
 hold(inset_axes, 'on');
 yline(inset_axes, v1_end, '--r');
@@ -162,7 +169,7 @@ F = 250;
 mu = 0.05;
 g = 9.81;
 
-M2_values = 5:5:1000;
+M2_values = 100:100:2000;
 
 % Store simulation results
 x1 = {};
@@ -185,18 +192,31 @@ end
 
 t_settle_array = [];
 for i = 1:length(v1)
+
+% Find the time at which settling occurs
+
 v1_end = v1{i}(end);
 tolerance = 0.01 * abs(v1_end);
 
+% Moving average
+n = 500; %n represent how many rows in the final result
+v1_averaged = reshape(v1{i}(1:10000), n, []);
+v1_averaged = abs(v1_averaged - v1_end);
+v1_averaged = mean(v1_averaged, 2);
 % Find the settling time index
+t_settle_index = find(v1_averaged <= tolerance, 1, 'first');
+
+% Find the settling time index
+t_settle_index = round(10000/n*(1/2+t_settle_index));
 t_settle_index = find(abs(v1{i} - v1_end) <= tolerance, 1, 'first');
+fprintf("%d %.2f\n", M2_values(i), t{i}(t_settle_index));
 t_settle_array(i) = t{i}(t_settle_index);
 end
 figure;
 plot(M2_values,t_settle_array, '-o');
 title("Settling time vs load mass");
 xlabel("load mass (kg)")
-ylabel("settling time");
+ylabel("Robot settling time (s)");
 %%
 clear; close all; clc;
 M1 = 150;
